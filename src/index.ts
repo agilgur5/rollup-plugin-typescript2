@@ -47,13 +47,8 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 
 	const getDiagnostics = (id: string, snapshot: tsTypes.IScriptSnapshot) =>
 	{
-		return cache().getSyntacticDiagnostics(id, snapshot, () =>
-		{
-			return service.getSyntacticDiagnostics(id);
-		}).concat(cache().getSemanticDiagnostics(id, snapshot, () =>
-		{
-			return service.getSemanticDiagnostics(id);
-		}));
+		return cache().getSyntacticDiagnostics(id, snapshot)
+			.concat(cache().getSemanticDiagnostics(id, snapshot));
 	}
 
 	const pluginOptions: IOptions = Object.assign({},
@@ -117,7 +112,6 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 			filter = createFilter(context, pluginOptions, parsedConfig);
 
 			servicesHost = new LanguageServiceHost(parsedConfig, pluginOptions.transformers, pluginOptions.cwd);
-
 			service = tsModule.createLanguageService(servicesHost, tsModule.createDocumentRegistry());
 			servicesHost.setLanguageService(service);
 
@@ -213,17 +207,17 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 						this.error(red(`failed to transpile '${id}'`));
 				}
 
-				const references = getAllReferences(id, servicesHost.getScriptSnapshot(id), parsedConfig.options);
+				const references = getAllReferences(id, snapshot, parsedConfig.options);
 				return convertEmitOutput(output, references);
 			});
 
 			if (pluginOptions.check)
 			{
 				const diagnostics = getDiagnostics(id, snapshot);
+				printDiagnostics(contextWrapper, diagnostics, parsedConfig.options.pretty === true);
+
 				if (diagnostics.length > 0)
 					noErrors = false;
-
-				printDiagnostics(contextWrapper, diagnostics, parsedConfig.options.pretty === true);
 			}
 
 			if (!result)

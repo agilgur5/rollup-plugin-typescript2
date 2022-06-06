@@ -234,14 +234,14 @@ export class TsCache
 		return transformedData;
 	}
 
-	public getSyntacticDiagnostics(id: string, snapshot: tsTypes.IScriptSnapshot, check: () => tsTypes.Diagnostic[]): IDiagnostics[]
+	public getSyntacticDiagnostics(id: string, snapshot: tsTypes.IScriptSnapshot): IDiagnostics[]
 	{
-		return this.getDiagnostics("syntax", this.syntacticDiagnosticsCache, id, snapshot, check);
+		return this.getDiagnostics("syntax", this.syntacticDiagnosticsCache, id, snapshot, this.host.service.getSyntacticDiagnostics(id));
 	}
 
-	public getSemanticDiagnostics(id: string, snapshot: tsTypes.IScriptSnapshot, check: () => tsTypes.Diagnostic[]): IDiagnostics[]
+	public getSemanticDiagnostics(id: string, snapshot: tsTypes.IScriptSnapshot): IDiagnostics[]
 	{
-		return this.getDiagnostics("semantic", this.semanticDiagnosticsCache, id, snapshot, check);
+		return this.getDiagnostics("semantic", this.semanticDiagnosticsCache, id, snapshot, this.host.service.getSemanticDiagnostics(id));
 	}
 
 	private checkAmbientTypes(): void
