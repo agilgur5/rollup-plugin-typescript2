@@ -61,6 +61,8 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 
 			if (diagnostics.length > 0)
 				noErrors = false;
+
+			return diagnostics;
 	}
 
 	const pluginOptions: IOptions = Object.assign({},
@@ -201,7 +203,19 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 				if (output.emitSkipped)
 				{
 					// always checking on fatal errors, even if options.check is set to false
-					typecheckFile(id, snapshot, contextWrapper);
+					const diagnostics = typecheckFile(id, snapshot, contextWrapper);
+
+					// not a diagnostic error, so could be rootDir error
+					if (diagnostics.length === 0) {
+						noErrors = false;
+						// TS6059: https://github.com/microsoft/TypeScript/blob/7e91485bec9e24c0793083ff44d23124695b0729/src/compiler/diagnosticMessages.json#L4366
+						// @ts-expect-error -- this API is marked as @internal, but is accessible
+						const rootDirDiag = tsModule.Diagnostics.File_0_is_not_under_rootDir_1_rootDir_is_expected_to_contain_all_source_files;
+						// @ts-expect-error -- this API is marked as @internal, but is accessible
+						const filledDiag: tsTypes.Diagnostic = tsModule.createCompilerDiagnostic(rootDirDiag, id, parsedConfig.options.rootDir);
+						const converted = convertDiagnostic("options", [filledDiag]);
+						printDiagnostics(context, converted, parsedConfig.options.pretty === true);
+					}
 
 					// since no output was generated, aborting compilation
 					cache().done();
