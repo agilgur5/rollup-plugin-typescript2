@@ -219,12 +219,17 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 			if (!result)
 				return undefined;
 
-			if (watchMode && this.addWatchFile && result.references)
-			{
-				if (tsConfigPath)
-					this.addWatchFile(tsConfigPath);
-				result.references.map(this.addWatchFile, this);
-				context.debug(() => `${green("    watching")}: ${result.references!.join("\nrpt2:               ")}`);
+			if (result.references) {
+				result.references.map(reference => cache().setDependency(reference, id));
+
+				if (watchMode && this.addWatchFile)
+				{
+					if (tsConfigPath)
+						this.addWatchFile(tsConfigPath);
+
+					result.references.map(this.addWatchFile, this);
+					context.debug(() => `${green("    watching")}: ${result.references!.join("\nrpt2:               ")}`);
+				}
 			}
 
 			if (result.dts)
