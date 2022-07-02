@@ -3,7 +3,7 @@ import * as tsTypes from "typescript";
 import { PluginImpl, PluginContext, InputOptions, OutputOptions, TransformResult, SourceMap, Plugin } from "rollup";
 import { normalizePath as normalize } from "@rollup/pluginutils";
 import * as _ from "lodash";
-import { blue, red, yellow, green } from "colors/safe";
+import { blue, red, yellow, green, reset } from "colors/safe";
 import findCacheDir from "find-cache-dir";
 
 import { RollupContext } from "./rollupcontext";
@@ -260,8 +260,10 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 
 			// workaround: err.stack contains err.message and Rollup prints both, causing duplication, so split out the stack itself if it exists (c.f. https://github.com/ezolenko/rollup-plugin-typescript2/issues/103#issuecomment-1172820658)
 			const stackOnly = err.stack?.split(err.message)[1];
+			// workaround: Rollup changes colors in its logging and adds a prefix, so reset colors and add a newline, respectively
+			const message = `${reset("\n")}${err.message}`;
 			if (stackOnly)
-				this.error({ ...err, message: err.message, stack: stackOnly });
+				this.error({ ...err, message, stack: stackOnly });
 			else
 				this.error(err);
 		},
