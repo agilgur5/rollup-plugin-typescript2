@@ -63,3 +63,7 @@ test("integration - syntax error - abortOnError: false / check: false", () => {
   expect(genBundle("syntax.ts", { abortOnError: false })).rejects.toThrow(err);
   expect(genBundle("syntax.ts", { check: false })).rejects.toThrow(err);
 });
+
+test.only("integration - emitSkipped error", () => {
+  expect(genBundle("no-errors.ts", { tsconfigOverride: { include: ["/non-existent-dir/"], rootDir: "/non-existent-dir/" }})).rejects.toThrow("huh");
+});
