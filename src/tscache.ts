@@ -113,6 +113,7 @@ export class TsCache
 
 	constructor(private noCache: boolean, hashIgnoreUnknown: boolean, private host: tsTypes.LanguageServiceHost, private cacheRoot: string, private options: tsTypes.CompilerOptions, private rollupConfig: any, rootFilenames: string[], private context: IContext)
 	{
+		console.log("tscache constructor: ")
 		this.dependencyTree = new Graph({ directed: true });
 		this.dependencyTree.setDefaultNodeLabel((_node: string) => ({ dirty: false }));
 
@@ -252,6 +253,7 @@ export class TsCache
 		if (this.noCache)
 			return convert();
 
+		console.log("cache: \n  id: ", id);
 		const hash = this.createHash(id, snapshot);
 		this.context.debug(`    cache: '${cache.path(hash)}'`);
 
@@ -295,10 +297,12 @@ export class TsCache
 	{
 		const label = this.dependencyTree.node(id) as INodeLabel;
 
+		console.log(`isDirty: \n  checkImports: ${checkImports}\n  ambientTypesDirty: ${this.ambientTypesDirty}\n  id: ${id}\n  label: `, label)
+
 		if (!label)
 			return false;
 
-		if (!checkImports || label.dirty)
+		if (!checkImports) // || label.dirty)
 			return label.dirty;
 
 		if (this.ambientTypesDirty)
@@ -317,6 +321,8 @@ export class TsCache
 
 			if (dirty)
 				this.context.debug(`    import changed: ${node}`);
+
+			console.log("    dependency: ", dependency)
 
 			return dirty;
 		});

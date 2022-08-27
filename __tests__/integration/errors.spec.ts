@@ -1,5 +1,5 @@
 import { jest, afterAll, test, expect } from "@jest/globals";
-import { Mock } from "jest-mock"
+import { Mock } from "jest-mock";
 import * as path from "path";
 import { normalizePath as normalize } from "@rollup/pluginutils";
 import * as fs from "fs-extra";

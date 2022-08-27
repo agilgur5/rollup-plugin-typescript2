@@ -1,4 +1,5 @@
 import { jest, beforeAll, afterAll, test, expect } from "@jest/globals";
+import { Mock } from "jest-mock";
 import * as path from "path";
 import * as fs from "fs-extra";
 
@@ -15,25 +16,28 @@ const fixtureDir = `${testDir}/fixtures`;
 beforeAll(async () => {
   await fs.ensureDir(fixtureDir);
   // copy the dir to not interfere with other parallel tests since we need to change files for watch mode
-  // note we're copying the root fixture dir bc we need the _base_ tsconfig too. maybe optimize in the future or use the other fixtures?
+  // note we're copying the root fixture dir bc we need the _base_ tsconfig too. we also use the error fixture here as well
   await fs.copy(local("fixtures"), fixtureDir);
 });
 afterAll(() => fs.remove(testDir));
 
-async function watchBundle(input: string, extraOpts?: RPT2Options) {
+async function watchBundle(input: string, extraOpts?: RPT2Options, onwarn?: Mock) {
+  const dir = path.dirname(input);
   return helpers.watchBundle({
     input,
-    tsconfig: `${path.dirname(input)}/tsconfig.json`, // use the tsconfig of whatever fixture we're in
-    testDir,
+    tsconfig: `${dir}/tsconfig.json`, // use the tsconfig of whatever fixture we're in
+    testDir: `${testDir}/${path.basename(dir)}`, // append the fixture's name
     extraOpts,
+    onwarn,
   });
 }
 
 test("integration - watch", async () => {
+  const onwarn = jest.fn();
   const srcPath = `${fixtureDir}/no-errors/index.ts`;
   const importPath = `${fixtureDir}/no-errors/some-import.ts`;
-  const distDir = `${testDir}/dist`;
-  const distPath = `${testDir}/dist/index.js`;
+  const distDir = `${testDir}/no-errors/dist`;
+  const distPath = `${distDir}/index.js`;
   const decPath = `${distDir}/index.d.ts`;
   const decMapPath = `${decPath}.map`;
   const filesArr = [
@@ -46,7 +50,8 @@ test("integration - watch", async () => {
     "type-only-import.d.ts.map",
   ];
 
-  const watcher = await watchBundle(srcPath);
+  const watcher = await watchBundle(srcPath, {}, onwarn);
+  expect(onwarn).toBeCalledTimes(0);
 
   const files = await fs.readdir(distDir);
   expect(files).toEqual(expect.arrayContaining(filesArr));
@@ -60,6 +65,7 @@ test("integration - watch", async () => {
   // modify an imported file -- this should cause it and index to change
   await fs.writeFile(importPath, "export const difference = 2", "utf8");
   await helpers.watchEnd(watcher);
+  expect(onwarn).toBeCalledTimes(0);
 
   // should have same structure, since names haven't changed and dist hasn't been cleaned
   const files2 = await fs.readdir(distDir);
@@ -74,6 +80,30 @@ test("integration - watch", async () => {
   // modify an imported file to cause a semantic error
   await fs.writeFile(importPath, "export const difference = nonexistent", "utf8")
   await expect(helpers.watchEnd(watcher)).rejects.toThrow("Cannot find name 'nonexistent'.");
+  expect(onwarn).toBeCalledTimes(0);
+
+  await watcher.close();
+});
+
+test("integration - watch - abortOnError: false / check: false", async () => {
+  const onwarn = jest.fn();
+  const srcPath = `${fixtureDir}/errors/semantic.ts`;
+
+  const watcher = await watchBundle(srcPath, {
+    include: srcPath,
+    abortOnError: false,
+  }, onwarn);
+  expect(onwarn).toBeCalledTimes(1);
+
+  // either warning or not type-checking should result in the same bundle
+  // const { output: output2 } = await genBundle("semantic.ts", { check: false }, onwarn);
+  // expect(output).toEqual(output2);
+
+  // expect(output[0].fileName).toEqual("index.js");
+  // expect(output[1].fileName).toEqual("semantic.d.ts");
+  // expect(output[2].fileName).toEqual("semantic.d.ts.map");
+  // expect(output.length).toEqual(3); // no other files
+  // expect(onwarn).toBeCalledTimes(1);
 
   await watcher.close();
 });

@@ -119,6 +119,7 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 
 		options(config)
 		{
+			console.log("options: ")
 			rollupOptions = {... config};
 			context = new ConsoleContext(pluginOptions.verbosity, "rpt2: ");
 

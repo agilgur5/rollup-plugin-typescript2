@@ -42,8 +42,11 @@ export class RollingCache<DataType> implements ICache<DataType>
 	/** @returns true if old cache contains all names and nothing more */
 	public match(names: string[]): boolean
 	{
-		if (this.rolled)
+		console.log("cache.match: ")
+		if (this.rolled) {
+			console.log("  cache.rolled")
 			return false;
+		}
 
 		if (!existsSync(this.oldCacheRoot))
 			return names.length === 0; // empty folder matches
