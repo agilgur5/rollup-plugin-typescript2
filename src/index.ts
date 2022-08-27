@@ -335,6 +335,24 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 				addDeclaration(key, out);
 			});
 
+			const cachePlaceholder = `${pluginOptions.cacheRoot}/placeholder`
+
+			/** modify declaration map sources to correct relative path, accounting for placeholder dir */
+			const fixDeclarationMapSources = (entryText: string) => {
+				if (!_output?.file && !_output?.dir) // if no output, don't try to correct the path as it will fail
+					return entryText;
+
+				const declarationDir = (_output.file ? dirname(_output.file) : _output.dir)!;
+				const parsedText = JSON.parse(entryText) as SourceMap;
+				// invert back to absolute, then make relative to declarationDir
+				parsedText.sources = parsedText.sources.map(source =>
+				{
+					const absolutePath = resolve(cachePlaceholder, source);
+					return normalize(relative(declarationDir, absolutePath));
+				});
+				return JSON.stringify(parsedText);
+			}
+
 			const emitDeclaration = (key: string, extension: string, entry?: tsTypes.OutputFile) =>
 			{
 				if (!entry)
@@ -349,27 +367,12 @@ const typescript: PluginImpl<RPT2Options> = (options) =>
 				if (pluginOptions.useTsconfigDeclarationDir)
 				{
 					context.debug(() => `${blue("emitting declarations")} for '${key}' to '${fileName}'`);
-					tsModule.sys.writeFile(fileName, entry.text, entry.writeByteOrderMark);
-					return;
+					return tsModule.sys.writeFile(fileName, entry.text, entry.writeByteOrderMark);
 				}
 
-				// don't mutate the entry because generateBundle gets called multiple times
-				let entryText = entry.text
-				const cachePlaceholder = `${pluginOptions.cacheRoot}/placeholder`
-
-				// modify declaration map sources to correct relative path (only if outputting)
-				if (extension === ".d.ts.map" && (_output?.file || _output?.dir))
-				{
-					const declarationDir = (_output.file ? dirname(_output.file) : _output.dir) as string;
-					const parsedText = JSON.parse(entryText) as SourceMap;
-					// invert back to absolute, then make relative to declarationDir
-					parsedText.sources = parsedText.sources.map(source =>
-					{
-						const absolutePath = resolve(cachePlaceholder, source);
-						return normalize(relative(declarationDir, absolutePath));
-					});
-					entryText = JSON.stringify(parsedText);
-				}
+				let entryText = entry.text;
+				if (extension === ".d.ts.map")
+					entryText = fixDeclarationMapSources(entryText);
 
 				const relativePath = normalize(relative(cachePlaceholder, fileName));
 				context.debug(() => `${blue("emitting declarations")} for '${key}' to '${relativePath}'`);
